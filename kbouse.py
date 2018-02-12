@@ -3,7 +3,7 @@
     Move mouse with arrow buttons
     optionally combined with ctrl to
     avoid effects such us browser 
-    scrolling, and alt to make cursor
+    scrolling, and shift to make cursor
     jump further to speed up usage.
     only Left Mouse button click is
     supported under numpad 0
@@ -22,16 +22,16 @@ def main():
     ld = display.Display()
     dist = 15
     ctx = ld.record_create_context(0,[record.AllClients],[{'core_requests': (0,0), 'core_replies' : (0,0), 'ext_requests' : (0,0,0,0), 'ext_replies' : (0,0,0,0), 'delivered_events' : (0,0), 'device_events': (X.KeyPress, X.KeyRelease), 'errors': (0,0), 'client_started': False, 'client_died':False}]) 
-    alt, up, down, left, right = (0,0,0,0,0)
+    shift, up, down, left, right = (0,0,0,0,0)
     # ld.change_pointer_control((0x4fff,0x7fff),0)
 
     def handlerr(reply): 
-        nonlocal alt, dist, up, down, left, right
+        nonlocal shift, dist, up, down, left, right
         dat = reply.data
         if dat:
             ev, dat = rq.EventField(None).parse_binary_value(dat, ld.display, None, None)
-            # print(ev)
-            if ev.detail == 64:
+            print(ev)
+            if ev.detail in (50,62):
                 if ev.type == 2:
                     dist = 200 # quicker cursor movement while ALT is pressed
                 elif ev.type == 3:
