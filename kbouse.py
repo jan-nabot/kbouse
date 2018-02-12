@@ -30,7 +30,7 @@ def main():
         dat = reply.data
         if dat:
             ev, dat = rq.EventField(None).parse_binary_value(dat, ld.display, None, None)
-            print(ev)
+            # print(ev)
             if ev.detail in (50,62):
                 if ev.type == 2:
                     dist = 200 # quicker cursor movement while ALT is pressed
