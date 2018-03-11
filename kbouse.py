@@ -1,103 +1,110 @@
-#!/usr/bin/env python3
-'''
-    Move mouse with arrow buttons
-    optionally combined with ctrl to
-    avoid effects such us browser 
-    scrolling, and shift to make cursor
-    jump further to speed up usage.
-    only Left Mouse button click is
-    supported under numpad 0
-
-    requires: linux, X, python-xlib, pymouse
-    written in: python3.5
-    by: jan-nabot
-'''
-from pymouse import PyMouse
 from Xlib import display, X
 from Xlib.ext import record
 from Xlib.protocol import rq
-
-def main():
-    pym = PyMouse()
-    ld = display.Display()
-    dist = 15
-    ctx = ld.record_create_context(0,[record.AllClients],[{'core_requests': (0,0), 'core_replies' : (0,0), 'ext_requests' : (0,0,0,0), 'ext_replies' : (0,0,0,0), 'delivered_events' : (0,0), 'device_events': (X.KeyPress, X.KeyRelease), 'errors': (0,0), 'client_started': False, 'client_died':False}]) 
-    shift, up, down, left, right = (0,0,0,0,0)
-    # ld.change_pointer_control((0x4fff,0x7fff),0)
-
-    def handlerr(reply): 
-        nonlocal shift, dist, up, down, left, right
-        dat = reply.data
-        if dat:
-            ev, dat = rq.EventField(None).parse_binary_value(dat, ld.display, None, None)
-            # print(ev)
-            if ev.detail in (50,62):
-                if ev.type == 2:
-                    dist = 200 # quicker cursor movement while ALT is pressed
-                elif ev.type == 3:
-                    dist = 15 
-            if ev.detail in (111,113,114,116):
-                if ev.detail == 111: 
-                    if ev.type == 2:
-                        up = 1
-                        x,y = pym.position()
-                        if left == 0 and right == 0:
-                            pym.move(x,y-dist)
-                        elif left == 1:
-                            pym.move(x-dist,y-dist)
-                        elif right == 1:
-                            pym.move(x+dist,y-dist)
-                    elif ev.type == 3:
-                        up = 0
-                
-                elif ev.detail == 116: 
-                    if ev.type == 2:
-                        down = 1
-                        x,y = pym.position()
-                        if left == 0 and right == 0:
-                            pym.move(x,y+dist)
-                        elif left == 1: 
-                            pym.move(x-dist,y+dist)
-                        elif right == 1:
-                            # print('k')
-                            pym.move(x+dist,y+dist)
-                    elif ev.type == 3:
-                        down = 0
-
-                elif ev.detail == 113: 
-                    if ev.type == 2:
-                        left = 1
-                        x,y = pym.position()
-                        if up == 0 and down == 0:
-                            pym.move(x-dist,y)
-                        elif up == 1: 
-                            pym.move(x-dist,y-dist)
-                        elif down == 1:
-                            pym.move(x-dist,y+dist)
-                    elif ev.type == 3:
-                        left = 0
-
-                elif ev.detail == 114: 
-                    if ev.type == 2:
-                        right = 1
-                        x,y = pym.position()
-                        if up == 0 and down == 0:
-                            pym.move(x+dist,y)
-                        elif up == 1: 
-                            pym.move(x+dist,y-dist)
-                        elif down == 1: 
-                            pym.move(x+dist,y+dist)
-                    elif ev.type == 3:
-                        right = 0
-            if ev.detail in (90,):
-                pym.click(*pym.position())
-
-    def loop():
+from Xlib.ext.xtest import fake_input
+import threading
+availableevents = (50,62,90,111,113,114,116) 
+class Listener(threading.Thread):
+    def __init__(self, passto):
+        self.passto = passto
+        self.dLi = display.Display()
+        contex = self.dLi.record_create_context(0,[record.AllClients],[{'core_requests': (0,0), 'core_replies' : (0,0), 'ext_requests' : (0,0,0,0), 'ext_replies' : (0,0,0,0), 'delivered_events' : (0,0), 'device_events': (X.KeyPress, X.KeyRelease, X.MotionNotify), 'errors': (0,0), 'client_started': False, 'client_died':False}]) 
+        self.dLi.record_enable_context(contex, self.handlingfunc)
+    def cleanup(self):
+        self.dLi.record_free_context(contex)
+    def run(self):
         while 1:
-            return ld.next_event()
+            return self.dLi.next_event()
+    def handlingfunc(self, ur):
+        idk = ur.data
+        while len(idk):
+            aa, bb = rq.EventField(None).parse_binary_value(idk, self.dLi.display, None, None)
+            if aa.type in (2,3) and aa.detail in availableevents:
+                return self.passto(aa.type, aa.detail) 
+            else:
+                return
 
-    ld.record_enable_context(ctx, handlerr)
-    loop()
-    ld.record_free_context(ctx)
+class Doer():
+    def __init__(self):
+        self.dDo = display.Display()
+        self.dist = 15
+        self.shift = 0
+        self.up = 0
+        self.down = 0
+        self.left = 0
+        self.right = 0
+                
+    def getmousepos(self):
+        xy = self.dDo.screen().root.query_pointer()._data
+        x = xy['win_x']
+        y = xy['win_y']
+        return x, y
 
-main()
+    def moveit(self, x, y):
+        fake_input(self.dDo, X.MotionNotify, x=x, y=y)
+        self.dDo.sync()
+
+    def interact1(self, in0, in1):
+        if in0 == 3:
+            if in1 in (50,62):
+                self.dist = 15
+            elif in1 == 111:
+                self.up = 0
+            elif in1 == 116:
+                self.down = 0
+            elif in1 == 113:
+                self.left = 0
+            elif in1 == 114:
+                self.right = 0
+        
+        elif in0 == 2:
+            if in1 in (50,62):
+                self.dist == 200
+                return
+            elif in1 in (90,):
+                return
+            
+            x, y = self.getmousepos()
+        
+            if in1 == 111:
+                self.up = 1
+                if self.left == 1:
+                    self.moveit(x-self.dist, y-self.dist)
+                elif self.right == 1:
+                    self.moveit(x+self.dist, y-self.dist)
+                else:
+                    self.moveit(x, y-self.dist)
+            
+            if in1 == 116:
+                self.down = 1
+                if self.left == 1:
+                    self.moveit(x-self.dist, y+self.dist)
+                elif self.right == 1:
+                    self.moveit(x+self.dist, y+self.dist)
+                else:
+                    self.moveit(x, y+self.dist)
+
+            if in1 == 113:
+                self.left = 1
+                if self.up == 1:
+                    self.moveit(x-self.dist, y-self.dist)
+                elif self.down == 1:
+                    self.moveit(x-self.dist, y+self.dist)
+                else:
+                    self.moveit(x-self.dist, y)
+
+            if in1 == 114:
+                self.right = 1
+                if self.up == 1:
+                    self.moveit(x+self.dist, y-self.dist)
+                elif self.down == 1:
+                    self.moveit(x+self.dist, y+self.dist)
+                else:
+                    self.moveit(x+self.dist, y)
+
+            else:
+                pass
+
+ra = Doer()
+ma = ra.interact1
+Listener(ma).start()
