@@ -24,6 +24,7 @@ class Listener(threading.Thread):
             else:
                 return
 
+# class Doer(threading.Thread):
 class Doer():
     def __init__(self):
         self.dDo = display.Display()
@@ -44,6 +45,11 @@ class Doer():
         fake_input(self.dDo, X.MotionNotify, x=x, y=y)
         self.dDo.sync()
 
+    def clickit(self, button = 1):
+        fake_input(self.dDo, X.ButtonPress, [None, 1,3,2,4,5][button])
+        fake_input(self.dDo, X.ButtonRelease, [None, 1, 3, 2, 4, 5][button])
+        self.dDo.sync()
+
     def interact1(self, in0, in1):
         if in0 == 3:
             if in1 in (50,62):
@@ -62,7 +68,8 @@ class Doer():
                 self.dist == 200
                 return
             elif in1 in (90,):
-                return
+                # return
+                self.clickit()
             
             x, y = self.getmousepos()
         
